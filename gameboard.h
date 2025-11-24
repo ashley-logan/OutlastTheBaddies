@@ -240,11 +240,11 @@ class GameBoard {
         }
 
         size_t getNumRows() {
-            return numRows;
+            return board.numrows();
         }
 
         size_t getNumCols() {
-            return numCols;
+            return board.numcols(0);
         }
 
         
@@ -258,12 +258,8 @@ class GameBoard {
         //---------------------------------------------------------------------------------
         void getHeroPosition(size_t& row, size_t& col) {
             
-            //---------------------------------
-            // TODO: write this getter function
-            //---------------------------------
-
-            row = 0;  // modify/remove this line
-            col = 0;  // modify/remove this line
+            row = HeroRow;
+            col = HeroCol;
         }
 
         
@@ -275,11 +271,8 @@ class GameBoard {
 	    //      int HeroCol;
         //---------------------------------------------------------------------------------
         void setHeroPosition(size_t row, size_t col) {
-            
-            //---------------------------------
-            // TODO: write this setter function
-            //---------------------------------
-        
+            HeroRow = row;
+            HeroCol = col;
         }
 
         
@@ -294,11 +287,20 @@ class GameBoard {
         // if Hero cannot be found in board, then set Hero's position to (-1,-1)
         //---------------------------------------------------------------------------------
         void findHero() {
-            
-            //----------------------------------
-            // TODO: write this updater function
-            //----------------------------------
-        
+            if (HeroRow < board.numrows() && HeroCol < board.numcols(0)) {
+                for (size_t r = 0; r < board.numrows(); ++r) {
+                    for (size_t c = 0; c < board.numcols(r); ++c) {
+                        if (board(r,c)->isHero()) {
+                            HeroRow = r;
+                            HeroCol = c;
+                            return;
+                        }
+                    }
+                }
+            }
+
+            HeroRow = -1;
+            HeroCol = -1; 
         }
 
         

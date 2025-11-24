@@ -1,21 +1,6 @@
-//-----------------------------------------------------
-// TODO:  Copy in your Grid class OR replace this 
-//          file with grid.h from Project 05 Part 1.
-//          This class is tested here using 
-//          the same test cases from Project 05 Part 1.
-//-----------------------------------------------------
-
-//-------------------------------------------------
-// TODO:  Write file header.
-//-------------------------------------------------
-
-//-------------------------------------------------
-// TODO:  Update the member function comments in 
-//        your own style.
-//-------------------------------------------------
-
 #pragma once
 
+#include <cstddef>
 #include <iostream>
 #include <exception>
 #include <stdexcept>
@@ -23,15 +8,35 @@
 
 using namespace std;
 
-template<typename T>
+template <typename T>
+struct ROW {
+  T *Cols;
+  size_t NumCols;
+
+  ROW(): Cols(new T[4]), NumCols(4) {}
+  ROW(size_t C): Cols(new T[C]), NumCols(C) {}
+  ~ROW() { delete[] Cols; }
+  ROW(const ROW &source) {
+    NumCols = source.NumCols;
+    copy(source.Cols, source.Cols + source.NumCols, Cols);
+  }
+  ROW& operator=(const ROW &source) {
+    if (this != &source) {
+      delete[] Cols;
+      Cols = new T[source.NumCols];
+      NumCols = source.NumCols;
+      copy(source.Cols, source.Cols + source.NumCols, Cols);
+    }
+
+    return *this;
+  }
+};
+
+template <typename T>
 class Grid {
 private:
-  struct ROW {
-    T*  Cols;     // array of column elements
-    size_t NumCols;  // total # of columns (0..NumCols-1)
-  };
 
-  ROW* Rows;     // array of ROWs
+  ROW<T>* Rows;     // array of ROWs
   size_t  NumRows;  // total # of rows (0..NumRows-1)
     
 public:
@@ -41,34 +46,14 @@ public:
   // Called automatically by to construct a 4x4 Grid. 
   // All elements initialized to default value of T.
   //
-  Grid() {
-    Rows = new ROW[4];  // 4 rows
-    NumRows = 4;
+  Grid(): Rows(new ROW<T>[4]), NumRows(4) {}
 
-    // initialize each row to have 4 columns:
-    for (size_t r = 0; r < NumRows; ++r) {
-      Rows[r].Cols = new T[4];
-      Rows[r].NumCols = 4;
+  Grid(size_t R, size_t C) : NumRows(R) {
+    Rows = new ROW<T>[R];
 
-      // initialize the elements to their default value:
-      for (size_t c = 0; c < Rows[r].NumCols; ++c) {
-        Rows[r].Cols[c] = T();  // default value for type T:
-      }
+    for (size_t r = 0; r < R; ++r) {
+      Rows[r] = ROW<T>(C);
     }
-  }
-
-  //
-  // parameterized constructor:
-  //
-  // Called automatically to construct a Grid 
-  // with R rows, where each row has C columns. 
-  // All elements initialized to default value of T.
-  //
-  Grid(size_t R, size_t C) {
-    //-------------------------------------------------
-    // TODO:  Write this parameterized constructor.
-    //-------------------------------------------------
-
   }
     
   //
@@ -77,32 +62,14 @@ public:
   // Called automatically to free memory for this Grid.
   //
   virtual ~Grid() {
-
-      //-------------------------------------------------
-      // TODO:  Write this destructor.
-      //-------------------------------------------------
-
-
+    delete[] Rows;
   }
+  //
+  Grid(const Grid<T>& source) {
+    NumRows = source.NumRows; // copies NumRows
+    Rows = new ROW<T>[NumRows]; // creates empty ROW array
 
-
-  //
-  // copy constructor:
-  //
-  // Called automatically to construct a Grid that contains a
-  // copy of an existing Grid.  Example: this occurs when passing
-  // Grid as a parameter by value
-  //
-  //   void somefunction(Grid<int> G2)  <--- G2 is a copy:
-  //   { ... }
-  //
-  Grid(const Grid<T>& other) {
-      
-      //-------------------------------------------------
-      // TODO:  Write this copy constructor.
-      //-------------------------------------------------
-
-  
+    copy(source.Rows, source.Rows + source.NumRows, Rows);
   }
     
   //
@@ -110,13 +77,16 @@ public:
   //
   // Called when one Grid is assigned into another, i.e. this = other;
   //
-  Grid& operator=(const Grid& other) {
-      Grid<T> temp;
-      
-      //-------------------------------------------------
-      // TODO:  Write this copy operator.
-      //-------------------------------------------------
-    return temp;  // TODO: update this, it is only here so code compiles.
+  Grid &operator=(const Grid &source) {
+    // TODO consider using uninitialized_copy from "<memory>" to remove redundant code
+    if (this != &source) {
+      delete[] Rows; // deallocate memory for ROW array (calls destructor for each ROW object)
+      NumRows = source.NumRows; // set new NumRows
+      Rows = new ROW<T>[NumRows]; // create new ROW array
+      copy(source.Rows, source.Rows + source.NumRows, Rows); // copy row data from source to this (calls copy operator for each ROW object)
+    }
+
+    return *this;
       
   }
 
@@ -126,16 +96,8 @@ public:
   // Returns the # of rows in the Grid.  
   // The indices for these rows are 0..numrows-1.
   //
-  size_t numrows() const {
-      
-    //-------------------------------------------------
-    // TODO:  Write this function.
-    //-------------------------------------------------
-        
-    return 0;  // TODO:  update this, it is only here so code compiles.
-  }
+  size_t numrows() const {return NumRows;}
   
-
   //
   // numcols
   //
@@ -144,13 +106,8 @@ public:
   // For now, each row has the same number of columns.
   //
   size_t numcols(size_t r) const {
-      
-      //-------------------------------------------------
-      // TODO:  Write this function.
-      //-------------------------------------------------
-      
-      return 0;  // TODO: update this, it is only here so code compiles.
-
+    // if no data, return 0 else return NumCols of first row since grid shape is rectangular
+    return (NumRows == 0) ? 0 : Rows[0].NumCols;
   }
 
 
@@ -160,12 +117,7 @@ public:
   // Returns the total # of elements in the Grid.
   //
   size_t size() const {
-      
-      //-------------------------------------------------
-      // TODO:  Write this function.
-      //-------------------------------------------------
-      
-      return 0;  // TODO: update this, it is only here so code compiles.
+    return (NumRows == 0) ? 0 : NumRows * Rows[0].NumCols;
   }
 
 
@@ -179,16 +131,11 @@ public:
   //    cout << grid(r, c) << endl;
   //
   T& operator()(size_t r, size_t c) {
-      T temp;
-      
-    
-      //-------------------------------------------------
-      // TODO:  Write the parentheses overloaded operator
-      //-------------------------------------------------
-      
 
-
-      return temp;  // TODO: update this, it is only here so code compiles.
+      if (r >= NumRows || c >= Rows[0].NumCols) {
+        throw invalid_argument("Index out of bounds");
+      }
+      return Rows[r].Cols[c];
   }
 
   //
@@ -199,9 +146,19 @@ public:
   //
   void _output() {
 
-      //-------------------------------------------------
-      // TODO:  Write this function.
-      //-------------------------------------------------
+    if (NumRows == 0) {
+      return;
+    }
+
+    size_t nCols = Rows[0].NumCols;
+
+    for (size_t r = 0; r < NumRows; ++r) {
+      cout << "|    ";
+      for (size_t c = 0; c < nCols; ++c) {
+        cout << "|  " << Rows[r].Cols[c] << "  |  ";
+      }
+      cout << "  |" << endl;
+    }
       
       
   }
