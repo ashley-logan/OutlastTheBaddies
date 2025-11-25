@@ -257,7 +257,6 @@ class GameBoard {
         // note: row and col are passed-by-reference
         //---------------------------------------------------------------------------------
         void getHeroPosition(size_t& row, size_t& col) {
-            
             row = HeroRow;
             col = HeroCol;
         }
