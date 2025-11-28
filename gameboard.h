@@ -382,6 +382,12 @@ public:
   // return true if Hero is still on board at the end of the round
   // return false if Hero is NOT on board at the end of the round
   //---------------------------------------------------------------------------------
+  void swapCells(BoardCell *&lhs, BoardCell *&rhs) {
+    BoardCell *tempLh = lhs;
+    lhs = rhs;
+    rhs = tempLh;
+  }
+
   bool makeMoves(char HeroNextMove) {
     //-----------------------------------
     // TODO: write this gameplay function
@@ -405,98 +411,67 @@ public:
 
     try {
       if (tryMove(board(HeroRow, HeroCol), newR, newC)) {
+        // target cell is empty, move is made
         return true;
       }
       if (board(newR, newC)->isExit()) {
+        // target cell is escape ladder, Hero escapes
         cout << "Hero escaped\n";
         delete board(HeroRow, HeroCol);
-        return false;
-      }
-      cout << "Hero destroyed. Game Over.\n";
-      delete board(HeroRow, HeroCol);
-      return false;
-    } catch (OutOfBoundsError &e) {
-      newR = (newR < 0 || newR >= numRows) ? HeroRow : newR;
-      newC = (newC < 0 || newC >= numCols) ? HeroCol : newC;
-      // try move to (newR, newC)
-    } catch (BarrierCollisionError &e) {
-      if (rowChanged && colChanged) {
-        if (board(newR, HeroCol)->)
-      }
-    }
-    try {
-      // hero attempts to move out-of-bounds in rows
-      if (newR < 0 || newR >= numRows || newC < 0 || newC >= numCols) {
-        throw OutOfBoundsError("Hero's attempted move is out of bounds",
-                               newR < 0 || newR >= numRows,
-                               newC < 0 || newC >= numCols);
-      } else if (board(newR, newC)->isBarrier()) {
-        throw BarrierCollisionError("Hero's attempted move blocked by barrier");
-      } else if (board(newR, newC)->isExit()) {
-        delete board(HeroRow, HeroCol);
-        cout << "Hero escaped!" << endl;
-        return false;
-
-      } else if (board(newR, newC)->isHole()) {
-        delete board(HeroRow, HeroCol);
-        cout << "Hero fell into the abyss! Game over" << endl;
-        return false;
-      } else if (board(newR, newC)->isBaddie()) {
-        delete board(HeroRow, HeroCol);
-        cout << "Hero was defeated by a monster! Game over" << endl;
-        return false;
-      } else if (board(newR, newC)->isSpace()) {
-        board(HeroRow, HeroCol)->setMoved(true);
-        board(HeroRow, HeroCol)->setPos(newR, newC);
-
-        delete board(newR, newC); // destroy Nothing cell
-        board(newR, newC) = board(
-            HeroRow, HeroCol); // set cell pointer to hold hero cell pointer
-        board(HeroRow, HeroCol) = new Nothing(
-            HeroRow, HeroCol); // set old hero cell pointer to new Nothing cell
-
-        HeroRow = newR;
-        HeroCol = newC;
-
-        return true;
-      }
-    } catch (OutOfBoundsError &e) {
-      cout << e.what() << endl;
-      if (e.isInvalidRow()) {
-        if (newR >= numRows) {
-          newR = numRows - 1;
-        } else {
-          newR = 0;
-        }
-      }
-      if (e.isInvalidCol()) {
-        if (newC >= numCols) {
-          newC = numCols - 1;
-        } else {
-          newC = 0;
-        }
-      }
-      cout << "Changing row for Hero position to stay in-bounds" << endl;
-
-    } catch (BarrierCollisionError &e) {
-      cout << e.what() << endl;
-      if (newR == HeroRow || newC == HeroCol) {
-        cout << "Barrier collision, Hero unmoved" << endl;
-        return true;
       } else {
-        newC = HeroCol;
-        // check attempt move for board(newR, newC);
+        // target cell is baddie or abyss, Hero defeated
+        cout << "Hero destroyed. Game Over.\n";
+        delete board(HeroRow, HeroCol);
       }
+      return false;
+
+    } catch (OutOfBoundsError &e) {
+      // target cell is out of bounds, change target row and/or target column
+      // accordingly
+      newR = (e.isInvalidRow()) ? HeroRow : newR;
+      newC = (e.isInvalidCol()) ? HeroCol : newC;
+      if (board(newR, newC)->isSpace()) {
+        // new target cell is empty, make move
+        swap(board(HeroRow, HeroCol), board(newR, newC));
+      }
+      // else Hero stays in place
+      return true;
+    } catch (BarrierCollisionError &e) {
+      // target cell is a barrier cell
+      // if move was one-dimensional, ignore move, remain in place
+      // if move was two-dimensional, try keeping row-move and check
+      // if still barrier, no move
+      if (rowChanged && colChanged && board(newR, HeroCol)->isSpace()) {
+        // move was two-dimensional AND target cell from vertical movement only
+        // is valid new target cell = (target row, same column)
+        swapCells(board(HeroRow, HeroCol), board(newR, HeroCol));
+      }
+      // otherwise, Hero stays in place
+      return true;
     }
     // etc.
 
+    size_t baddiesCount = 0;
     for (size_t r = 0; r < numRows; ++r) {
       for (size_t c = 0; c < numCols; ++c) {
+        if (baddiesCount >= numMonsters + numSuperMonsters + numBats) {
+          break;
+        }
+
         if (board(r, c)->isBaddie()) {
-          board(r, c)->attemptMoveTo(newR, newC, HeroRow, HeroCol);
+          baddiesCount++;
+          board(r, c)->attemptMoveTo(newR, newC, rowChanged, colChanged,
+                                     HeroRow, HeroCol);
           try {
-            if (newR >= numRows || newR < 0) {
-              throw OutOfBoundsError("write error message");
+            throwIfError(newR, newC);
+            BoardCell *targetCell = board(newR, newC);
+            if (targetCell->isSpace()) {
+              // move to space
+            } else if (targetCell->isHero()) {
+              // Hero destroyed, game over
+            } else if (targetCell->isHole()) {
+              delete board(r, c);
+              board(r, c) = new Nothing(r, c);
             }
           }
         }
@@ -520,10 +495,7 @@ public:
     }
 
     if (board(tryRow, tryCol)->isSpace()) {
-      delete board(tryRow, tryCol);
-      board(tryRow, tryCol) = cell;
-      board(tryRow, tryCol)->setMoved(true);
-      cell = new Nothing(cell->getRow(), cell->getCol());
+      swap(cell, board(tryRow, tryCol));
       return true;
     }
     return false;
