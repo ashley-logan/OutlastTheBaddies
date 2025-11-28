@@ -25,11 +25,10 @@ public:
   virtual char
   display() = 0; // pure virtual function; this is an abstract base class
 
-  virtual void attemptMoveTo(size_t &newR, size_t &newC, bool &changeR,
-                             bool &changeC, size_t hRow, size_t hCol) {
+  virtual void attemptMoveTo(size_t &newR, size_t &newC, size_t hRow,
+                             size_t hCol) {
     newR = myRow;
     newC = myCol;
-    changeR = changeC = false;
   }
 
   virtual bool isHero() { return false; }
@@ -78,8 +77,8 @@ public:
 
   virtual void setNextMove(char inChar) { nextMove = inChar; }
 
-  virtual void attemptMoveTo(size_t &newR, size_t &newC, bool &changeR,
-                             bool &changeC, size_t hRow, size_t hCol) {
+  virtual void attemptMoveTo(size_t &newR, size_t &newC, size_t hRow,
+                             size_t hCol) {
     //------------------------------------------------------------------------
     // TODO: write attemptMoveTo() for Hero
     //
@@ -94,42 +93,34 @@ public:
     case 'q':
       newR = hRow - 1;
       newC = hCol - 1;
-      changeR = changeC = true;
       return;
     case 'w':
       newR = hRow - 1;
       newC = hCol;
-      changeR = true;
       return;
     case 'e':
       newR = hRow - 1;
       newC = hCol + 1;
-      changeR = changeC = true;
       return;
     case 'a':
       newR = hRow;
       newC = hCol - 1;
-      changeC = true;
       return;
     case 'd':
       newR = hRow;
       newC = hCol + 1;
-      changeC = true;
       return;
     case 'z':
       newR = hRow + 1;
       newC = hCol - 1;
-      changeR = changeC = true;
       return;
     case 'x':
       newR = hRow + 1;
       newC = hCol;
-      changeR = true;
       return;
     case 'c':
       newR = hRow + 1;
       newC = hCol + 1;
-      changeR = changeC = true;
       return;
     default:
       newR = hRow;

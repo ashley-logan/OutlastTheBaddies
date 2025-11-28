@@ -388,6 +388,29 @@ public:
     rhs = tempLh;
   }
 
+  void adjustMove(BoardCell *thisCell, size_t &row, size_t &col) {
+    /* adjustMove handles any invalid coordinates by adjusting them until
+    they are valid. Does not make any moves, only validates target coordinates*/
+    row = (row < 0 || row >= numRows)
+              ? thisCell->getRow()
+              : row; // if row is invalid, reset to current row
+    col = (row < 0 || row >= numRows)
+              ? thisCell->getCol()
+              : col; // if column is invalid, reset to current column
+    if (board(row, col)->isBarrier() ||
+        (board(row, col)->isExit() && thisCell->isBaddie())) {
+      // if adjusted target cell is a wall cell, reset column to current column
+      // (ignore horizontal direction)
+      col = thisCell->getCol();
+      if (board(row, col)->isBarrier() ||
+          (board(row, col)->isExit() && thisCell->isBaddie())) {
+        // if secondary adjustment still moves to a wall cell, reset row to
+        // current row
+        row = thisCell->getRow();
+      }
+    }
+  }
+
   bool makeMoves(char HeroNextMove) {
     //-----------------------------------
     // TODO: write this gameplay function
@@ -399,60 +422,42 @@ public:
 
     // determine where hero proposes to move to
     size_t newR, newC;
-    bool rowChanged, colChanged = false;
     board(HeroRow, HeroCol)->setNextMove(HeroNextMove);
-    board(HeroRow, HeroCol)
-        ->attemptMoveTo(newR, newC, rowChanged, colChanged, HeroRow, HeroCol);
+    board(HeroRow, HeroCol)->attemptMoveTo(newR, newC, HeroRow, HeroCol);
+    adjustMove(board(HeroRow, HeroCol), newR, newC); // validate coordinates
 
-    if (!rowChanged && !colChanged) {
-      cout << "Hero remains in place\n";
+    if (board(HeroRow, HeroCol) == board(newR, newC)) {
+      // no move is made
       return true;
     }
 
     try {
-      if (tryMove(board(HeroRow, HeroCol), newR, newC)) {
+      if (board(newR, newC)->isSpace()) {
         // target cell is empty, move is made
-        return true;
-      }
-      if (board(newR, newC)->isExit()) {
-        // target cell is escape ladder, Hero escapes
+        swap(board(HeroRow, HeroCol), board(newR, newC));
+        HeroRow = newR;
+        HeroCol = newC;
+        board(HeroRow, HeroCol)->setPos(HeroRow, HeroCol);
+        board(HeroRow, HeroCol)->setMoved(true);
+      } else if (board(newR, newC)->isExit()) {
         cout << "Hero escaped\n";
         delete board(HeroRow, HeroCol);
-      } else {
-        // target cell is baddie or abyss, Hero defeated
+        return false;
+      } else if (board(newR, newC)->isBaddie() || board(newR, newC)->isHole()) {
         cout << "Hero destroyed. Game Over.\n";
         delete board(HeroRow, HeroCol);
+        return false;
       }
+    } catch (runtime_error &e) {
+      cout << e.what() << endl;
       return false;
-
-    } catch (OutOfBoundsError &e) {
-      // target cell is out of bounds, change target row and/or target column
-      // accordingly
-      newR = (e.isInvalidRow()) ? HeroRow : newR;
-      newC = (e.isInvalidCol()) ? HeroCol : newC;
-      if (board(newR, newC)->isSpace()) {
-        // new target cell is empty, make move
-        swap(board(HeroRow, HeroCol), board(newR, newC));
-      }
-      // else Hero stays in place
-      return true;
-    } catch (BarrierCollisionError &e) {
-      // target cell is a barrier cell
-      // if move was one-dimensional, ignore move, remain in place
-      // if move was two-dimensional, try keeping row-move and check
-      // if still barrier, no move
-      if (rowChanged && colChanged && board(newR, HeroCol)->isSpace()) {
-        // move was two-dimensional AND target cell from vertical movement only
-        // is valid new target cell = (target row, same column)
-        swapCells(board(HeroRow, HeroCol), board(newR, HeroCol));
-      }
-      // otherwise, Hero stays in place
-      return true;
     }
-    // etc.
 
     size_t baddiesCount = 0;
     for (size_t r = 0; r < numRows; ++r) {
+      if (baddiesCount >= numMonsters + numSuperMonsters + numBats) {
+        break;
+      }
       for (size_t c = 0; c < numCols; ++c) {
         if (baddiesCount >= numMonsters + numSuperMonsters + numBats) {
           break;
@@ -460,44 +465,40 @@ public:
 
         if (board(r, c)->isBaddie()) {
           baddiesCount++;
-          board(r, c)->attemptMoveTo(newR, newC, rowChanged, colChanged,
-                                     HeroRow, HeroCol);
+          board(r, c)->attemptMoveTo(newR, newC, HeroRow, HeroCol);
+          adjustMove(board(r, c), newR, newC);
+          if (board(r, c) == board(newR, newC)) {
+            board(r, c)->setMoved(true);
+            continue;
+          }
+
           try {
-            throwIfError(newR, newC);
-            BoardCell *targetCell = board(newR, newC);
-            if (targetCell->isSpace()) {
-              // move to space
-            } else if (targetCell->isHero()) {
+            if (board(newR, newC)->isSpace()) {
+              swap(board(r, c), board(newR, newC));
+              board(newR, newC)->setPos(newR, newC);
+              board(newR, newC)->setMoved(true);
+              return true;
+            } else if (board(newR, newC)->isHero()) {
               // Hero destroyed, game over
-            } else if (targetCell->isHole()) {
+              delete board(HeroRow, HeroCol);
+              return false;
+            } else if (board(newR, newC)->isHole()) {
+              // badddie removed from board
               delete board(r, c);
               board(r, c) = new Nothing(r, c);
+            } else if (board(newR, newC)->isBaddie()) {
+              cout << "baddie attempted to move to spot occupied by another "
+                      "baddie, remaining in place\n";
+              board(r, c)->setMoved(true);
             }
+          } catch (runtime_error &e) {
+            cout << e.what() << endl;
+            return false;
           }
         }
       }
     }
 
-    return false;
-  }
-
-  bool tryMove(BoardCell *&cell, size_t tryRow, size_t tryCol) {
-    if (cell->isStatic()) {
-      throw runtime_error("Cannot call tryMove on a static cell");
-    }
-    if (tryRow < 0 || tryRow >= numRows || tryCol < 0 || tryCol >= numCols) {
-      throw OutOfBoundsError("attempted move is out of bounds",
-                             tryRow < 0 || tryRow >= numRows,
-                             tryCol < 0 || tryCol >= numCols);
-    }
-    if (board(tryRow, tryCol)->isBarrier()) {
-      throw BarrierCollisionError("attempted to move into wall");
-    }
-
-    if (board(tryRow, tryCol)->isSpace()) {
-      swap(cell, board(tryRow, tryCol));
-      return true;
-    }
     return false;
   }
 };
