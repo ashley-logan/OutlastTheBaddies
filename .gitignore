@@ -2,4 +2,5 @@
 .direnv/
 *.exe
 *.rc
+*.dSYM/
 

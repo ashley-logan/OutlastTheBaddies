@@ -390,21 +390,27 @@ public:
 
   void adjustMove(BoardCell *thisCell, size_t &row, size_t &col) {
     /* adjustMove handles any invalid coordinates by adjusting them until
-    they are valid. Does not make any moves, only validates target coordinates*/
-    row = (row < 0 || row >= numRows)
-              ? thisCell->getRow()
-              : row; // if row is invalid, reset to current row
-    col = (row < 0 || row >= numRows)
-              ? thisCell->getCol()
-              : col; // if column is invalid, reset to current column
+    they are valid. Does not make any moves, only changes coordinates if
+    invalid*/
+    if (row < 0 || row >= numRows) {
+      // if attempted row is invalid, reset row to current row
+      row = thisCell->getRow();
+    }
+
+    if (col < 0 || col >= numCols) {
+      // if attempted column is invalid, reset column to current column
+      col = thisCell->getCol();
+    }
+
     if (board(row, col)->isBarrier() ||
         (board(row, col)->isExit() && thisCell->isBaddie())) {
-      // if adjusted target cell is a wall cell, reset column to current column
-      // (ignore horizontal direction)
+      // if adjusted target cell is a wall cell, OR target cell is an exit and
+      // the mover is a baddie, reset column to current
+      // column (ignore horizontal direction)
       col = thisCell->getCol();
       if (board(row, col)->isBarrier() ||
           (board(row, col)->isExit() && thisCell->isBaddie())) {
-        // if secondary adjustment still moves to a wall cell, reset row to
+        // if secondary adjustment is still invalid, reset row to
         // current row
         row = thisCell->getRow();
       }
@@ -420,7 +426,7 @@ public:
     // exceptions; some sample code is provided to get you started...
     // get user move
 
-    // determine where hero proposes to move to
+    // START HERO MOVEMENT
     size_t newR, newC;
     board(HeroRow, HeroCol)->setNextMove(HeroNextMove);
     board(HeroRow, HeroCol)->attemptMoveTo(newR, newC, HeroRow, HeroCol);
@@ -434,32 +440,44 @@ public:
     try {
       if (board(newR, newC)->isSpace()) {
         // target cell is empty, move is made
-        swap(board(HeroRow, HeroCol), board(newR, newC));
+        swap(board(HeroRow, HeroCol),
+             board(newR, newC)); // swap hero and space cell
         HeroRow = newR;
         HeroCol = newC;
         board(HeroRow, HeroCol)->setPos(HeroRow, HeroCol);
         board(HeroRow, HeroCol)->setMoved(true);
       } else if (board(newR, newC)->isExit()) {
+        // target cell is exit, game over hero escaped
         cout << "Hero escaped\n";
         delete board(HeroRow, HeroCol);
+        board(HeroRow, HeroCol) = new Nothing(HeroRow, HeroCol);
         return false;
       } else if (board(newR, newC)->isBaddie() || board(newR, newC)->isHole()) {
+        // target cell is baddie or hole, game over hero failed
         cout << "Hero destroyed. Game Over.\n";
         delete board(HeroRow, HeroCol);
+        board(HeroRow, HeroCol) = new Nothing(HeroRow, HeroCol);
         return false;
       }
     } catch (runtime_error &e) {
+      // return false on runtime error
       cout << e.what() << endl;
       return false;
     }
+    // END HERO MOVEMENT
 
-    size_t baddiesCount = 0;
+    // START BADDIE MOVEMENT
+    size_t baddiesCount = 0; // count how many baddies have been iterated over
     for (size_t r = 0; r < numRows; ++r) {
       if (baddiesCount >= numMonsters + numSuperMonsters + numBats) {
+        // if all baddies have been iterated over, do not continue checking for
+        // baddies
         break;
       }
       for (size_t c = 0; c < numCols; ++c) {
         if (baddiesCount >= numMonsters + numSuperMonsters + numBats) {
+          // same check as above but for inner loop (no need to continue
+          // iteration if all baddies found)
           break;
         }
 
@@ -467,31 +485,41 @@ public:
           baddiesCount++;
           board(r, c)->attemptMoveTo(newR, newC, HeroRow, HeroCol);
           adjustMove(board(r, c), newR, newC);
+
           if (board(r, c) == board(newR, newC)) {
+            // if target position is same as currnet position, set moved to true
+            // and continue loop
             board(r, c)->setMoved(true);
             continue;
           }
 
           try {
             if (board(newR, newC)->isSpace()) {
-              swap(board(r, c), board(newR, newC));
+              // target cell is empty, move baddie to target cell
+              swap(board(r, c),
+                   board(newR, newC)); // swap baddie and empty cell
               board(newR, newC)->setPos(newR, newC);
               board(newR, newC)->setMoved(true);
               return true;
             } else if (board(newR, newC)->isHero()) {
-              // Hero destroyed, game over
+              // target cell is Hero, Hero destroyed game over
               delete board(HeroRow, HeroCol);
+              board(HeroRow, HeroCol) = new Nothing(HeroRow, HeroCol);
+              swap(board(r, c), board(HeroRow, HeroCol));
               return false;
             } else if (board(newR, newC)->isHole()) {
-              // badddie removed from board
+              // target cell is hole, badddie removed from board
               delete board(r, c);
-              board(r, c) = new Nothing(r, c);
+              board(r, c) =
+                  new Nothing(r, c); // cell where baddie was is now empty cell
             } else if (board(newR, newC)->isBaddie()) {
+              // target cell is another baddie, do not move
               cout << "baddie attempted to move to spot occupied by another "
                       "baddie, remaining in place\n";
               board(r, c)->setMoved(true);
             }
           } catch (runtime_error &e) {
+            // return false on runtime error
             cout << e.what() << endl;
             return false;
           }
