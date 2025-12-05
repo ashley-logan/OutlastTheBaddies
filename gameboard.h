@@ -417,7 +417,15 @@ public:
     }
     // cout << "New target position: (" << row << ", " << col << ")\n";
   }
-
+  void resetMoved() {
+    for (size_t r = 0; r < numRows; ++r) {
+      for (size_t c = 0; c < numCols; ++c) {
+        if (board(r,c)->isBaddie()) {
+          board(r,c)->setMoved(false);
+        }
+      }
+    }
+  }
   bool makeMoves(char HeroNextMove) {
     //-----------------------------------
     // TODO: write this gameplay function
@@ -429,6 +437,7 @@ public:
 
     // START HERO MOVEMENT
     size_t newR, newC;
+    size_t oldHRow = HeroRow, oldHCol = HeroCol;
     board(HeroRow, HeroCol)->setNextMove(HeroNextMove);
     board(HeroRow, HeroCol)->attemptMoveTo(newR, newC, HeroRow, HeroCol);
     printf("Attempting Hero Move (%zu, %zu) --> (%zu, %zu)\n", HeroRow, HeroCol, newR, newC);
@@ -487,6 +496,12 @@ public:
         if (board(r, c)->isBaddie() && !board(r,c)->getMoved()) {
           baddiesCount++;
           board(r, c)->attemptMoveTo(newR, newC, HeroRow, HeroCol);
+          if (r == oldHRow) {
+            newC = c;
+          }
+          if (c == oldHCol) {
+            newR = r;
+          }
           printf("Attempting Baddie Move (%zu, %zu) --> (%zu, %zu)\n", r, c, newR, newC);
           adjustMove(board(r, c), newR, newC);
           printf("Updated target, new Baddie Move: (%zu, %zu) --> (%zu, %zu)\n", r, c, newR, newC);
@@ -532,6 +547,7 @@ public:
       }
     }
 
+    resetMoved();
     return true;
   }
 };
