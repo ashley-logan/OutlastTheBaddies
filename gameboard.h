@@ -392,6 +392,7 @@ public:
     /* adjustMove handles any invalid coordinates by adjusting them until
     they are valid. Does not make any moves, only changes coordinates if
     invalid*/
+    cout << "Original target position: (" << row << ", " << col << ")\n";
     if (row < 0 || row >= numRows) {
       // if attempted row is invalid, reset row to current row
       row = thisCell->getRow();
@@ -415,6 +416,7 @@ public:
         row = thisCell->getRow();
       }
     }
+    cout << "New target position: (" << row << ", " << col << ")\n";
   }
 
   bool makeMoves(char HeroNextMove) {
@@ -451,6 +453,7 @@ public:
         cout << "Hero escaped\n";
         delete board(HeroRow, HeroCol);
         board(HeroRow, HeroCol) = new Nothing(HeroRow, HeroCol);
+        wonGame = true;
         return false;
       } else if (board(newR, newC)->isBaddie() || board(newR, newC)->isHole()) {
         // target cell is baddie or hole, game over hero failed
@@ -500,12 +503,12 @@ public:
                    board(newR, newC)); // swap baddie and empty cell
               board(newR, newC)->setPos(newR, newC);
               board(newR, newC)->setMoved(true);
-              return true;
             } else if (board(newR, newC)->isHero()) {
               // target cell is Hero, Hero destroyed game over
               delete board(HeroRow, HeroCol);
               board(HeroRow, HeroCol) = new Nothing(HeroRow, HeroCol);
               swap(board(r, c), board(HeroRow, HeroCol));
+              cout << "Hero destroyed, game over\n";
               return false;
             } else if (board(newR, newC)->isHole()) {
               // target cell is hole, badddie removed from board
@@ -527,7 +530,7 @@ public:
       }
     }
 
-    return false;
+    return true;
   }
 };
 
