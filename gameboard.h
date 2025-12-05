@@ -484,10 +484,12 @@ public:
           break;
         }
 
-        if (board(r, c)->isBaddie()) {
+        if (board(r, c)->isBaddie() && !board(r,c)->getMoved()) {
           baddiesCount++;
           board(r, c)->attemptMoveTo(newR, newC, HeroRow, HeroCol);
+          printf("Attempting Baddie Move (%zu, %zu) --> (%zu, %zu)\n", r, c, newR, newC);
           adjustMove(board(r, c), newR, newC);
+          printf("Updated target, new Baddie Move: (%zu, %zu) --> (%zu, %zu)\n", r, c, newR, newC);
 
           if (board(r, c) == board(newR, newC)) {
             // if target position is same as currnet position, set moved to true
