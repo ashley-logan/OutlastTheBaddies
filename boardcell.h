@@ -185,25 +185,25 @@ public:
     //------------------------------------------------------------------------
     size_t currRow = getRow();
     size_t currCol = getCol();
+    int move = 0;
     // determine direction
-    if (currRow - hRow == 0) {
-      // no vertical movement
-    } else if (currRow - hRow < 0) {
-      // move down
-    } else if (currRow - hRow > 0) {
-      // move up
+    if (hRow == currRow) {
+      move = 0;
+    } else if (currRow < hRow) {
+      move = 1;
+    } else if (currRow > hRow) {
+      move = -1;
     }
-    int rowDiff = (currRow == hRow)
-                      ? 0
-                      : (currRow - hRow) / std::fabs(currRow - hRow) * power;
-    // case currRow = 7, hRow = 10; -3 / 3 = -1
-    // case currRow = 11, hRow = 5; 6 / 6 = 1
-    // case currRow = 3, hRow = 3; 0 / 0;
-    int colDiff = (currCol == hCol)
-                      ? 0
-                      : (currCol - hCol) / std::fabs(currCol - hCol) * power;
-    newR = hRow + rowDiff;
-    newC = hCol + colDiff;
+    newR = currRow + (move * power);
+    move = 0;
+    if (hCol == currCol) {
+      move = 0;
+    } else if (currCol < hCol) {
+      move = 1;
+    } else if (currCol > hCol) {
+      move = -1;
+    }
+    newC = currCol + (move*power);
   }
 
 private:

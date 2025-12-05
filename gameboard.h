@@ -16,6 +16,7 @@
 #include <ostream>
 #include <stdexcept>
 #include <string>
+#include <cstdio>
 
 #include "boardcell.h"
 #include "grid.h"
@@ -292,9 +293,8 @@ public:
   // if Hero cannot be found in board, then set Hero's position to (-1,-1)
   //---------------------------------------------------------------------------------
   void findHero() {
-    if (HeroRow < board.numrows() && HeroCol < board.numcols(0)) {
-      for (size_t r = 0; r < board.numrows(); ++r) {
-        for (size_t c = 0; c < board.numcols(r); ++c) {
+      for (size_t r = 0; r < getNumRows(); ++r) {
+        for (size_t c = 0; c < getNumCols(); ++c) {
           if (board(r, c)->isHero()) {
             HeroRow = r;
             HeroCol = c;
@@ -302,14 +302,13 @@ public:
           }
         }
       }
-    }
 
     HeroRow = -1;
     HeroCol = -1;
   }
 
   //---------------------------------------------------------------------------------
-  // bool makeMoves(char HeroNextMove)
+  // bool  Moves(char HeroNextMove)
   //
   // This is the primary gameplay operation for a single round of the game.
   // A LOT happens in this function...
@@ -392,7 +391,7 @@ public:
     /* adjustMove handles any invalid coordinates by adjusting them until
     they are valid. Does not make any moves, only changes coordinates if
     invalid*/
-    cout << "Original target position: (" << row << ", " << col << ")\n";
+    // cout << "Original target position: (" << row << ", " << col << ")\n";
     if (row < 0 || row >= numRows) {
       // if attempted row is invalid, reset row to current row
       row = thisCell->getRow();
@@ -416,7 +415,7 @@ public:
         row = thisCell->getRow();
       }
     }
-    cout << "New target position: (" << row << ", " << col << ")\n";
+    // cout << "New target position: (" << row << ", " << col << ")\n";
   }
 
   bool makeMoves(char HeroNextMove) {
@@ -432,41 +431,42 @@ public:
     size_t newR, newC;
     board(HeroRow, HeroCol)->setNextMove(HeroNextMove);
     board(HeroRow, HeroCol)->attemptMoveTo(newR, newC, HeroRow, HeroCol);
+    printf("Attempting Hero Move (%zu, %zu) --> (%zu, %zu)\n", HeroRow, HeroCol, newR, newC);
     adjustMove(board(HeroRow, HeroCol), newR, newC); // validate coordinates
+    printf("Updated target, new Hero Move: (%zu, %zu) --> (%zu, %zu)\n", HeroRow, HeroCol, newR, newC);
 
-    if (board(HeroRow, HeroCol) == board(newR, newC)) {
-      // no move is made
-      return true;
-    }
-
-    try {
-      if (board(newR, newC)->isSpace()) {
-        // target cell is empty, move is made
-        swap(board(HeroRow, HeroCol),
-             board(newR, newC)); // swap hero and space cell
-        HeroRow = newR;
-        HeroCol = newC;
-        board(HeroRow, HeroCol)->setPos(HeroRow, HeroCol);
-        board(HeroRow, HeroCol)->setMoved(true);
-      } else if (board(newR, newC)->isExit()) {
-        // target cell is exit, game over hero escaped
-        cout << "Hero escaped\n";
-        delete board(HeroRow, HeroCol);
-        board(HeroRow, HeroCol) = new Nothing(HeroRow, HeroCol);
-        wonGame = true;
-        return false;
-      } else if (board(newR, newC)->isBaddie() || board(newR, newC)->isHole()) {
-        // target cell is baddie or hole, game over hero failed
-        cout << "Hero destroyed. Game Over.\n";
-        delete board(HeroRow, HeroCol);
-        board(HeroRow, HeroCol) = new Nothing(HeroRow, HeroCol);
+    if (board(HeroRow,HeroCol) != board(newR,newC)) {
+      // if Hero needs moved (target cell is not the same as current cell)
+      try {
+        if (board(newR, newC)->isSpace()) {
+          // target cell is empty, move is made
+          swap(board(HeroRow, HeroCol),
+              board(newR, newC)); // swap hero and space cell
+          HeroRow = newR;
+          HeroCol = newC;
+          board(HeroRow, HeroCol)->setPos(HeroRow, HeroCol);
+        } else if (board(newR, newC)->isExit()) {
+          // target cell is exit, game over hero escaped
+          cout << "Hero escaped\n";
+          delete board(HeroRow, HeroCol);
+          board(HeroRow, HeroCol) = new Nothing(HeroRow, HeroCol);
+          wonGame = true;
+          return false;
+        } else if (board(newR, newC)->isBaddie() || board(newR, newC)->isHole()) {
+          // target cell is baddie or hole, game over hero failed
+          cout << "Hero destroyed. Game Over.\n";
+          delete board(HeroRow, HeroCol);
+          board(HeroRow, HeroCol) = new Nothing(HeroRow, HeroCol);
+          return false;
+        }
+      } catch (runtime_error &e) {
+        // return false on runtime error
+        cout << e.what() << endl;
         return false;
       }
-    } catch (runtime_error &e) {
-      // return false on runtime error
-      cout << e.what() << endl;
-      return false;
     }
+    board(HeroRow, HeroCol)->setMoved(true);
+    
     // END HERO MOVEMENT
 
     // START BADDIE MOVEMENT
