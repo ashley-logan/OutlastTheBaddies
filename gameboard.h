@@ -437,7 +437,6 @@ public:
 
     // START HERO MOVEMENT
     size_t newR, newC;
-    size_t oldHRow = HeroRow, oldHCol = HeroCol;
     board(HeroRow, HeroCol)->setNextMove(HeroNextMove);
     board(HeroRow, HeroCol)->attemptMoveTo(newR, newC, HeroRow, HeroCol);
     printf("Attempting Hero Move (%zu, %zu) --> (%zu, %zu)\n", HeroRow, HeroCol, newR, newC);
@@ -451,9 +450,7 @@ public:
           // target cell is empty, move is made
           swap(board(HeroRow, HeroCol),
               board(newR, newC)); // swap hero and space cell
-          HeroRow = newR;
-          HeroCol = newC;
-          board(HeroRow, HeroCol)->setPos(HeroRow, HeroCol);
+          board(newR,newC)->setPos(newR, newC);
         } else if (board(newR, newC)->isExit()) {
           // target cell is exit, game over hero escaped
           cout << "Hero escaped\n";
@@ -474,11 +471,12 @@ public:
         return false;
       }
     }
-    board(HeroRow, HeroCol)->setMoved(true);
+    board(newR,newC)->setMoved(true);
     
     // END HERO MOVEMENT
 
     // START BADDIE MOVEMENT
+    size_t newbR, newbC;
     size_t baddiesCount = 0; // count how many baddies have been iterated over
     for (size_t r = 0; r < numRows; ++r) {
       if (baddiesCount >= numMonsters + numSuperMonsters + numBats) {
@@ -495,18 +493,12 @@ public:
 
         if (board(r, c)->isBaddie() && !board(r,c)->getMoved()) {
           baddiesCount++;
-          board(r, c)->attemptMoveTo(newR, newC, HeroRow, HeroCol);
-          if (r == oldHRow) {
-            newC = c;
-          }
-          if (c == oldHCol) {
-            newR = r;
-          }
-          printf("Attempting Baddie Move (%zu, %zu) --> (%zu, %zu)\n", r, c, newR, newC);
-          adjustMove(board(r, c), newR, newC);
-          printf("Updated target, new Baddie Move: (%zu, %zu) --> (%zu, %zu)\n", r, c, newR, newC);
+          board(r, c)->attemptMoveTo(newbR, newbC, HeroRow, HeroCol);
+          printf("Attempting Baddie Move (%zu, %zu) --> (%zu, %zu)\n", r, c, newbR, newbC);
+          adjustMove(board(r, c), newbR, newbC);
+          printf("Updated target, new Baddie Move: (%zu, %zu) --> (%zu, %zu)\n", r, c, newbR, newbC);
 
-          if (board(r, c) == board(newR, newC)) {
+          if (board(r, c) == board(newbR, newbC)) {
             // if target position is same as currnet position, set moved to true
             // and continue loop
             board(r, c)->setMoved(true);
@@ -514,25 +506,25 @@ public:
           }
 
           try {
-            if (board(newR, newC)->isSpace()) {
+            if (board(newbR, newbC)->isSpace()) {
               // target cell is empty, move baddie to target cell
               swap(board(r, c),
-                   board(newR, newC)); // swap baddie and empty cell
-              board(newR, newC)->setPos(newR, newC);
-              board(newR, newC)->setMoved(true);
-            } else if (board(newR, newC)->isHero()) {
+                   board(newbR, newbC)); // swap baddie and empty cell
+              board(newbR, newbC)->setPos(newbR, newbC);
+              board(newbR, newbC)->setMoved(true);
+            } else if (board(newbR, newbC)->isHero()) {
               // target cell is Hero, Hero destroyed game over
-              delete board(HeroRow, HeroCol);
-              board(HeroRow, HeroCol) = new Nothing(HeroRow, HeroCol);
-              swap(board(r, c), board(HeroRow, HeroCol));
+              delete board(newbR, newbC);
+              board(newbR, newbC) = new Nothing(newbR, newbC);
+              swap(board(r, c), board(newbR, newbC));
               cout << "Hero destroyed, game over\n";
               return false;
-            } else if (board(newR, newC)->isHole()) {
+            } else if (board(newbR, newbC)->isHole()) {
               // target cell is hole, badddie removed from board
               delete board(r, c);
               board(r, c) =
                   new Nothing(r, c); // cell where baddie was is now empty cell
-            } else if (board(newR, newC)->isBaddie()) {
+            } else if (board(newbR, newbC)->isBaddie()) {
               // target cell is another baddie, do not move
               cout << "baddie attempted to move to spot occupied by another "
                       "baddie, remaining in place\n";
@@ -546,7 +538,8 @@ public:
         }
       }
     }
-
+    HeroRow = newR;
+    HeroCol = newC;
     resetMoved();
     return true;
   }

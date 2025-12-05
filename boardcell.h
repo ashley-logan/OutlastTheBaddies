@@ -187,7 +187,7 @@ public:
     size_t currCol = getCol();
     int move = 0;
     // determine direction
-    if (hCol == currCol) {
+    if (hRow == currRow) {
       move = 0;
     } else if (currRow < hRow) {
       move = 1;
@@ -196,7 +196,7 @@ public:
     }
     newR = currRow + (move * power);
     move = 0;
-    if (hRow== currRow) {
+    if (hCol == currCol) {
       move = 0;
     } else if (currCol < hCol) {
       move = 1;
